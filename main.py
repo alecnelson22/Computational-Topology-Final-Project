@@ -18,7 +18,7 @@ def main():
     return
 
 def printBasicStats(data):
-    trajectories, frames, times = data
+    trajectories, frames, times, col_keys = data
     trajectory_ids = trajectories.groups.keys()
     number_of_trajectories = len(trajectory_ids)
     number_of_frames = len(times)
@@ -26,7 +26,19 @@ def printBasicStats(data):
     print('# frames: {}'.format(number_of_frames))
     return
 
+def basicPlot(data):
+    trajectories, frames, times, col_keys = data
+
+    return
+
 def buildDataStructures(folder, filename):
+    '''
+    Returns tuple with 4 values:
+        trajectories - Pandas GroupBy object where each group is a trajectory
+        frames - Pandas GroupBy object where each group is a list of points at one point in time
+        times - a sorted list of times. Useful as keys for 'frames' since that isn't can't be sorted
+        col_keys - tuple with 4 relevant column key strings (time, x, y, id)
+    '''
     data_frame = pd.read_csv(DATA_FOLDER + folder + filename)
 
     # Sanity check columns, get variants of keys
@@ -36,7 +48,6 @@ def buildDataStructures(folder, filename):
     id_key = checkColumn(['id', 'ID'], data_frame)
 
     col_keys = (t_key, x_key, y_key, id_key)
-
 
     # group points into trajectories based on trajectory id
     trajectories = data_frame.groupby(id_key)
