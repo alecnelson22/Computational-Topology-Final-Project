@@ -12,7 +12,7 @@ def main():
     folder = 'Pedestrian Dynamics Data Archive/bottleneck/'
     filename = '250_q_45_h0.csv'
     data = buildDataStructures(folder, filename)
-    trajectories, frames, times = data
+    trajectories, frames, times, col_keys = data
     printBasicStats(data)
 
     return
@@ -35,6 +35,9 @@ def buildDataStructures(folder, filename):
     y_key = checkColumn(['y', 'Y'], data_frame)
     id_key = checkColumn(['id', 'ID'], data_frame)
 
+    col_keys = (t_key, x_key, y_key, id_key)
+
+
     # group points into trajectories based on trajectory id
     trajectories = data_frame.groupby(id_key)
     # sort trajectories based on time
@@ -46,7 +49,7 @@ def buildDataStructures(folder, filename):
 
     times = list(frames.groups.keys())
     times.sort()
-    return trajectories, frames, times
+    return trajectories, frames, times, col_keys
 
 def checkColumn(key_options, data_frame):
     for key in key_options:
