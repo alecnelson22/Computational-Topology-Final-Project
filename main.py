@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 def main(filename):
     # Load file and build data structure
     data = build_data_structures(filename)
-    trajectories, frames, times, col_keys = data
+    trajectories, frames, col_keys = data
 
     # do analysis with data structure
     print_basic_stats(data) 
@@ -13,16 +13,16 @@ def main(filename):
     return
 
 def print_basic_stats(data):
-    trajectories, frames, times, col_keys = data
+    trajectories, frames, col_keys = data
     trajectory_ids = trajectories.groups.keys()
     number_of_trajectories = len(trajectory_ids)
-    number_of_frames = len(times)
+    number_of_frames = len(frames)
     print('# trajectories: {}'.format(number_of_trajectories))
     print('# frames: {}'.format(number_of_frames))
     return
 
 def plot_trajectories(data, include_center_of_mass):
-    trajectories, frames, times, col_keys = data
+    trajectories, frames, col_keys = data
     (t_key, x_key, y_key, id_key) = col_keys
     fig, ax = plt.subplots()
     trajectories.plot(ax = ax, x = x_key, y = y_key, legend = False)
@@ -37,7 +37,6 @@ def build_data_structures(filename, verbose = False):
     Returns tuple with 4 values:
         trajectories - Pandas GroupBy object where each group is a trajectory
         frames - Pandas GroupBy object where each group is a list of points at one point in time
-        times - a sorted list of times. Useful as keys for 'frames' since that isn't can't be sorted
         col_keys - tuple with 4 relevant column key strings (time, x, y, id)
     '''
     data_frame = pd.read_csv(filename)
@@ -65,9 +64,7 @@ def build_data_structures(filename, verbose = False):
     if verbose:
         print(frames.describe())
 
-    times = list(frames.groups.keys())
-    times.sort()
-    return trajectories, frames, times, col_keys
+    return trajectories, frames, col_keys
 
 def check_column(key_options, data_frame):
     for key in key_options:
