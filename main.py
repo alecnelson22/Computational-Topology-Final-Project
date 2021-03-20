@@ -9,6 +9,7 @@ def main(filename):
 
     # do analysis with data structure
     print_basic_stats(data) 
+    plot_trajectories(data, False)
     plot_trajectories(data, True)
     return
 
