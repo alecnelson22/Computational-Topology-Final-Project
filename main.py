@@ -1,13 +1,10 @@
+import sys, os
 import pandas as pd
 import matplotlib.pyplot as plt
 
-DATA_FOLDER = './data/'
-
-def main():
+def main(filename):
     # Load file and build data structure
-    folder = 'Pedestrian Dynamics Data Archive/bottleneck/'
-    filename = '250_q_45_h0.csv'
-    data = build_data_structures(folder, filename)
+    data = build_data_structures(filename)
     trajectories, frames, times, col_keys = data
 
     # do analysis with data structure
@@ -35,7 +32,7 @@ def plot_trajectories(data, include_center_of_mass):
     plt.show()
     return
 
-def build_data_structures(folder, filename, verbose = False):
+def build_data_structures(filename, verbose = False):
     '''
     Returns tuple with 4 values:
         trajectories - Pandas GroupBy object where each group is a trajectory
@@ -43,7 +40,7 @@ def build_data_structures(folder, filename, verbose = False):
         times - a sorted list of times. Useful as keys for 'frames' since that isn't can't be sorted
         col_keys - tuple with 4 relevant column key strings (time, x, y, id)
     '''
-    data_frame = pd.read_csv(DATA_FOLDER + folder + filename)
+    data_frame = pd.read_csv(filename)
     if verbose:
         print(data_frame.describe())
 
@@ -79,4 +76,9 @@ def check_column(key_options, data_frame):
     quit('Failed to find required key (' + ','.join(key_options) + ')')
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) < 2:
+        quit("Missing filename as command-line argument. e.g. 'python main.py ./data/Simple/two_ortho.csv'")
+    filename = sys.argv[1]
+    if not os.path.exists(filename):
+        quit("Filename '{}' does not exist".format(filename))
+    main(filename)
