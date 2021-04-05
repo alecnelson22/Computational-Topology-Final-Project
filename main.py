@@ -3,14 +3,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import gudhi
 
+
 def main(filename):
     # Load file and build data structure
     data = build_data_structures(filename)
     trajectories, frames, col_keys = data
 
     # do analysis with data structure
-    # print_basic_stats(data) 
+    # print_basic_stats(data)
     # plot_trajectories(data, True)
+
     data_with_risk_scores = calculate_risk_scores(data)
     out_folder = './out/'
     if not os.path.exists(out_folder):
@@ -18,6 +20,7 @@ def main(filename):
     input_filename = os.path.basename(filename)
     data_with_risk_scores.to_csv(out_folder + 'risk-' + input_filename, index=False)
     return
+
 
 def print_basic_stats(data):
     trajectories, frames, col_keys = data
@@ -27,6 +30,7 @@ def print_basic_stats(data):
     print('# trajectories: {}'.format(number_of_trajectories))
     print('# frames: {}'.format(number_of_frames))
     return
+
 
 def plot_trajectories(data, include_center_of_mass):
     trajectories, frames, col_keys = data
@@ -38,6 +42,7 @@ def plot_trajectories(data, include_center_of_mass):
         center_of_mass_list.plot(ax = ax, x = x_key, y = y_key, linewidth=3, color='black',legend = False)
     plt.show()
     return
+
 
 def calculate_risk_scores(data):
     trajectories, frames, col_keys = data
@@ -65,7 +70,7 @@ def calculate_risk_scores(data):
             id1 = frame.iloc[i][id_key]
             id2 = frame.iloc[j][id_key]
             key = get_dual_key(id1, id2)
-            this_exposure = exposure_function(distance) * delta_t
+            this_exposure = exposure_function(distance, type='weighted') * delta_t
             exposure_matrix[key] += this_exposure
         risk_so_far_map = dict()
         for index, point in frame.iterrows():
@@ -88,20 +93,29 @@ def calculate_risk_scores(data):
     updated_frames['total-risk'] = updated_frames[id_key].map(total_risk_map)
     return updated_frames
 
+
 def risk_function(exposure):
     # todo move parameter r and k to command line arg (with good defaults)
     r = 1 # how quickly you will get infected if you are exposed to someone with covid
     k = 0.1 # chance a person has covid
     return k * (1 - (1 / (r * exposure + 1)))
 
-def exposure_function(distance):
+
+def exposure_function(distance, type='binary'):
     # todo add different function types
     # todo move function type, and function params to command-line args (with good defaults)
     threshold = 2
-    if distance < threshold:
-        return 1
-    else:
+    if distance >= threshold:
         return 0
+    else:
+        if type == 'binary':
+            return 1
+        elif type == 'weighted':
+            weight = distance / threshold
+            return weight
+        else:
+            raise Exception('Unrecognized function type')
+
 
 def init_exposure_matrix(traj_ids):
     exposure_matrix = dict()
@@ -113,10 +127,12 @@ def init_exposure_matrix(traj_ids):
             exposure_matrix[key] = 0
     return exposure_matrix
 
+
 def get_dual_key(id1, id2):
     keyList = sorted([int(id1), int(id2)])
     key = '-'.join([str(x) for x in keyList])
     return key
+
 
 def build_data_structures(filename, verbose = False):
     '''
@@ -156,11 +172,37 @@ def build_data_structures(filename, verbose = False):
 
     return trajectories, frames, col_keys
 
+
 def check_column(key_options, data_frame):
     for key in key_options:
         if key in data_frame.columns:
             return key
     quit('Failed to find required key (' + ','.join(key_options) + ')')
+
+
+def plot_risk(filename, ids=[]):
+    '''
+    Plots risk over time as line graph
+
+    ids - optional list of ints of ids to plot
+          if left blank, all ids are plotted
+    '''
+    def _draw_data(ids):
+        for i in ids:
+            rows = data_frame.loc[data_frame['id'] == i]
+            risk = rows['risk-so-far'].tolist()
+            plt.plot(risk)
+
+    data_frame = pd.read_csv(filename)
+    if len(ids) == 0:
+        ids = data_frame['id'].unique()
+    _draw_data(ids)
+
+    plt.xlabel('Time')
+    plt.ylabel('Risk')
+    plt.title('Covid Exposure risk')
+    plt.show()
+
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
@@ -168,4 +210,5 @@ if __name__ == '__main__':
     filename = sys.argv[1]
     if not os.path.exists(filename):
         quit("Filename '{}' does not exist".format(filename))
-    main(filename)
+    # main(filename)
+    plot_risk(filename, ids=[1967, 1934, 1871])  # todo provide ids as command line args
