@@ -2,6 +2,8 @@ import sys, os
 import pandas as pd
 import matplotlib.pyplot as plt
 import gudhi
+import numpy as np
+import math
 
 
 def main(filename):
@@ -111,7 +113,7 @@ def exposure_function(distance, type='binary'):
         if type == 'binary':
             return 1
         elif type == 'weighted':
-            weight = distance / threshold
+            weight = 1 - distance / threshold
             return weight
         else:
             raise Exception('Unrecognized function type')
@@ -187,16 +189,16 @@ def plot_risk(filename, ids=[]):
     ids - optional list of ints of ids to plot
           if left blank, all ids are plotted
     '''
-    def _draw_data(ids):
+    def _draw_data(df, ids):
         for i in ids:
-            rows = data_frame.loc[data_frame['id'] == i]
+            rows = df.loc[data_frame['id'] == i]
             risk = rows['risk-so-far'].tolist()
             plt.plot(risk)
 
-    data_frame = pd.read_csv(filename)
+    df = pd.read_csv(filename)
     if len(ids) == 0:
-        ids = data_frame['id'].unique()
-    _draw_data(ids)
+        ids = df['id'].unique()
+    _draw_data(df, ids)
 
     plt.xlabel('Time')
     plt.ylabel('Risk')
@@ -204,11 +206,54 @@ def plot_risk(filename, ids=[]):
     plt.show()
 
 
-if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        quit("Missing filename as command-line argument. e.g. 'python main.py ./data/Simple/two_ortho.csv'")
-    filename = sys.argv[1]
-    if not os.path.exists(filename):
-        quit("Filename '{}' does not exist".format(filename))
-    # main(filename)
-    plot_risk(filename, ids=[1967, 1934, 1871])  # todo provide ids as command line args
+def risk_heatmap(filename, res=10):
+    """
+    Plots heatmap of risk
+    Gets x,y coordinate for data point, increments pixel value based on risk-so-far param
+
+    TODO Does not take into account a 6 ft radius of risk
+         Only increments a single pixel value for a given data point regardless of res param
+    """
+    # get coordinate bounds
+    df = pd.read_csv(filename)
+    xmin = df['x'].min()
+    xmax = df['x'].max()
+    ymin = df['y'].min()
+    ymax = df['y'].max()
+
+    # print('xmin', xmin)
+    # print('xmax', xmax)
+    # print('ymin', ymin)
+    # print('ymax', ymax)
+
+    # create img based on coordinate bounds, scale by res param
+    nx = math.ceil((xmax - xmin) * res)
+    ny = math.ceil((ymax - ymin) * res)
+    img = np.zeros((ny, nx))
+
+    # scales data point d from rmin, rmax data range to new tmin, tmax data range
+    def _scale(d, rmin, rmax, tmin, tmax):
+        scaled = ((d - rmin) / (rmax - rmin)) * (tmax - tmin) + tmin
+        return scaled
+
+    for i, row in df.iterrows():
+        x = row['x']
+        y = row['y']
+        xscaled = math.floor(_scale(x, xmin, xmax, 0, nx)) - 1
+        yscaled = math.floor(_scale(y, ymin, ymax, 0, ny)) - 1
+        img[yscaled, xscaled] += row['risk-so-far']
+
+    plt.imshow(img)
+    plt.show()
+
+
+risk_heatmap('out/risk-BI_CORR_400_A_1.csv')
+
+# if __name__ == '__main__':
+#     if len(sys.argv) < 2:
+#         quit("Missing filename as command-line argument. e.g. 'python main.py ./data/Simple/two_ortho.csv'")
+#     filename = sys.argv[1]
+#     if not os.path.exists(filename):
+#         quit("Filename '{}' does not exist".format(filename))
+#     # main(filename)
+#     plot_risk(filename, ids=[1967, 1934, 1871])  # todo provide ids as command line args
