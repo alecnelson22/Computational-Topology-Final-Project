@@ -5,22 +5,27 @@ import gudhi
 import numpy as np
 import math
 
+OUT_FOLDER = './out/'
+if not os.path.exists(OUT_FOLDER):
+    os.mkdir(OUT_FOLDER)
 
 def main(filename):
     # Load file and build data structure
-    data = build_data_structures(filename)
-    trajectories, frames, col_keys = data
+    # data = build_data_structures(filename)
+    # trajectories, frames, col_keys = data
 
     # do analysis with data structure
     # print_basic_stats(data)
     # plot_trajectories(data, True)
 
-    data_with_risk_scores = calculate_risk_scores(data)
-    out_folder = './out/'
-    if not os.path.exists(out_folder):
-        os.mkdir(out_folder)
-    input_filename = os.path.basename(filename)
-    data_with_risk_scores.to_csv(out_folder + 'risk-' + input_filename, index=False)
+    build_training_data(filename, True)
+
+    # data_with_risk_scores = calculate_risk_scores(data)
+    # out_folder = './out/'
+    # if not os.path.exists(out_folder):
+    #     os.mkdir(out_folder)
+    # input_filename = os.path.basename(filename)
+    # data_with_risk_scores.to_csv(out_folder + 'risk-' + input_filename, index=False)
     return
 
 
@@ -44,6 +49,35 @@ def plot_trajectories(data, include_center_of_mass):
         center_of_mass_list.plot(ax = ax, x = x_key, y = y_key, linewidth=3, color='black',legend = False)
     plt.show()
     return
+
+def build_training_data(dataset_list_filename, force_all = False):
+    df = pd.read_csv(dataset_list_filename)
+    total = len(df)
+    for index, row in df.iterrows():
+        filename = row['filename']
+        to_print = '|---- [{} / {}] {}'.format(index+1, total, filename)
+
+        print('|---- [{} / {}] {}'.format(index+1, total, filename))
+        if force_all or row.isnull().values.any():
+            avg, median = get_agg_risk_scores(filename)
+            df.loc[index, ['avg-risk-score', 'median-risk-score']] = [avg, median]
+            df.to_csv(dataset_list_filename, index=False)
+    return
+
+def get_agg_risk_scores(filename, save_all = True):
+    data = build_data_structures(filename)
+
+    data_with_risk_scores = calculate_risk_scores(data)
+    if save_all:
+        input_filename = os.path.basename(filename)
+        data_with_risk_scores.to_csv(OUT_FOLDER + 'risk-' + input_filename, index=False)
+
+    # print(data_with_risk_scores)
+    traj_risk_scores = data_with_risk_scores[['id', 'total-risk']].groupby('id').agg('mean')
+    # print(traj_risk_scores)
+    avg_risk = traj_risk_scores['total-risk'].mean()
+    median_risk = traj_risk_scores['total-risk'].median()
+    return avg_risk, median_risk
 
 
 def calculate_risk_scores(data):
@@ -247,13 +281,13 @@ def risk_heatmap(filename, res=10):
     plt.show()
 
 
-risk_heatmap('out/risk-BI_CORR_400_A_1.csv')
+# risk_heatmap('out/risk-BI_CORR_400_A_1.csv')
 
-# if __name__ == '__main__':
-#     if len(sys.argv) < 2:
-#         quit("Missing filename as command-line argument. e.g. 'python main.py ./data/Simple/two_ortho.csv'")
-#     filename = sys.argv[1]
-#     if not os.path.exists(filename):
-#         quit("Filename '{}' does not exist".format(filename))
-#     # main(filename)
-#     plot_risk(filename, ids=[1967, 1934, 1871])  # todo provide ids as command line args
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        quit("Missing filename as command-line argument. e.g. 'python main.py ./data/Simple/two_ortho.csv'")
+    filename = sys.argv[1]
+    if not os.path.exists(filename):
+        quit("Filename '{}' does not exist".format(filename))
+    main(filename)
+    # plot_risk(filename, ids=[1967, 1934, 1871])  # todo provide ids as command line args
