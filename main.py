@@ -58,7 +58,7 @@ def build_training_data(dataset_list_filename, force_all = False):
         to_print = '|---- [{} / {}] {} '.format(index+1, total, filename)
         padding = 99 - len(to_print)
         to_print += padding*'-' + '|'
-        print('|---- [{} / {}] {}'.format(index+1, total, filename))
+        print(to_print)
         if force_all or row.isnull().values.any():
             avg, median = get_agg_risk_scores(filename)
             df.loc[index, ['avg-risk-score', 'median-risk-score']] = [avg, median]
