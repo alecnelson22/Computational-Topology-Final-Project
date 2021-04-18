@@ -18,7 +18,7 @@ def main(filename):
     # print_basic_stats(data)
     # plot_trajectories(data, True)
 
-    build_training_data(filename, True)
+    build_training_data(filename)
 
     # data_with_risk_scores = calculate_risk_scores(data)
     # out_folder = './out/'
@@ -105,6 +105,8 @@ def calculate_risk_scores(data):
             i,j = indices
             id1 = frame.iloc[i][id_key]
             id2 = frame.iloc[j][id_key]
+            if id1 == id2:
+                continue
             key = get_dual_key(id1, id2)
             this_exposure = exposure_function(distance, type='weighted') * delta_t
             exposure_matrix[key] += this_exposure
