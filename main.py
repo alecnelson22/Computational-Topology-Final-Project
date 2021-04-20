@@ -2,8 +2,10 @@ import sys, os
 import pandas as pd
 import matplotlib.pyplot as plt
 import gudhi
+from gudhi.hera import wasserstein_distance
 import numpy as np
 import math
+from gtda.time_series import TakensEmbedding
 
 
 def main(filename):
@@ -14,6 +16,8 @@ def main(filename):
     # do analysis with data structure
     # print_basic_stats(data)
     # plot_trajectories(data, True)
+
+    ids = frames['id'].unique()
 
     data_with_risk_scores = calculate_risk_scores(data)
     out_folder = './out/'
@@ -46,6 +50,17 @@ def plot_trajectories(data, include_center_of_mass):
     return
 
 
+# Creates 2-d scatter plot from x,y coordinates
+def scatterplot(coords, title):
+    ptr = 0
+    for i in range(len(dirs)):
+        plt.scatter(coords[ptr:ptr+n_pics, 0], coords[ptr:ptr+n_pics, 1])
+        ptr += n_pics
+    plt.title(title)
+    plt.savefig(title)
+    plt.show()
+
+
 def calculate_risk_scores(data):
     trajectories, frames, col_keys = data
     traj_ids = trajectories.groups.keys()
@@ -59,12 +74,36 @@ def calculate_risk_scores(data):
     updated_frames = pd.DataFrame()
     total_risk_map = dict()
     frame_num = 0
+
+    # Get all unique individual ids
+    all_ids = []
+    for _time, frame in frames:
+        unique = frame['id'].unique()
+        for id in unique:
+            if id not in all_ids:
+                all_ids.append(id)
+
+    pairwise_idxs = {}  # maps a "person pair key" to an index in the distances array
+    c = 0
+    for i in range(len(all_ids) - 1):
+        for j in range(i + 1, len(all_ids)):
+            p1 = all_ids[i]
+            p2 = all_ids[j]
+            key = get_dual_key(p1,p2)
+            pairwise_idxs[key] = c
+            c += 1
+
+    # Initialize "distance between all individuals" array for every time step
+    # distances = [np.zeros(len(pairwise_idxs.keys())) for frame in frames]
+    distances = [[0 for f in frames] for i in range(len(pairwise_idxs.keys()))]
+
     for _time, frame in frames:
         frame_num += 1
         print('Frame: {} / {}'.format(frame_num, len(frames)), end='\r')
         points = frame[[x_key, y_key]].to_numpy()
         rips = gudhi.RipsComplex(points, max_edge_length=2)
         simplex_tree = rips.create_simplex_tree(max_dimension=1)
+
         for indices, distance in simplex_tree.get_filtration():
             if len(indices) != 2:
                 continue
@@ -74,25 +113,74 @@ def calculate_risk_scores(data):
             key = get_dual_key(id1, id2)
             this_exposure = exposure_function(distance, type='weighted') * delta_t
             exposure_matrix[key] += this_exposure
-        risk_so_far_map = dict()
-        for index, point in frame.iterrows():
-            id1 = point[id_key]
-            risk_so_far_inverse = 1
-            for id2 in traj_ids:
-                if id1 == id2:
-                    continue
-                else:
-                    key = get_dual_key(id1, id2)
-                    exposure = exposure_matrix[key]
-                    risk_so_far_inverse *= 1 - risk_function(exposure)
-            risk_so_far = 1 - risk_so_far_inverse
-            risk_so_far_map[id1] = risk_so_far
-            total_risk_map[id1] = risk_so_far
 
-        frame['risk-so-far'] = frame[id_key].map(risk_so_far_map)
-        updated_frames = updated_frames.append(frame)
+            idx = pairwise_idxs[key]
+            # distances[frame_num][idx] = distance
+            distances[idx][frame_num] = distance
 
-    updated_frames['total-risk'] = updated_frames[id_key].map(total_risk_map)
+    #     risk_so_far_map = dict()
+    #     for index, point in frame.iterrows():
+    #         id1 = point[id_key]
+    #         risk_so_far_inverse = 1
+    #         for id2 in traj_ids:
+    #             if id1 == id2:
+    #                 continue
+    #             else:
+    #                 key = get_dual_key(id1, id2)
+    #                 exposure = exposure_matrix[key]
+    #                 risk_so_far_inverse *= 1 - risk_function(exposure)
+    #         risk_so_far = 1 - risk_so_far_inverse
+    #         risk_so_far_map[id1] = risk_so_far
+    #         total_risk_map[id1] = risk_so_far
+    #
+    #     frame['risk-so-far'] = frame[id_key].map(risk_so_far_map)
+    #     updated_frames = updated_frames.append(frame)
+    #
+    # updated_frames['total-risk'] = updated_frames[id_key].map(total_risk_map)
+
+
+    print('Computing Takens Embedding...')
+    TE = TakensEmbedding(time_delay=2, dimension=2, flatten=True)
+    embedded_points = np.array(TE.fit_transform(distances))
+    print('embedded points shape', embedded_points.shape)
+    # plt.scatter(embedded_points[:,0], embedded_points[:,1])
+    # plt.show()
+    fig = TE.plot(embedded_points)
+
+    # Plotting colors to represent different classes of images
+    colors = ['black',
+              'lightcoral',
+              'red',
+              'peru',
+              'yellow',
+              'lawngreen',
+              'royalblue',
+              'fuchsia']
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    toplot = [5, 205, 405, 605, 805, 1005, 1205, 1405]
+    c = 0
+    for i in toplot:
+        ax1.scatter(embedded_points[i, :, 0], embedded_points[i, :, 1], color=colors[c])
+        # plt.plot(embedded_points[i, :, 0], embedded_points[i, :, 1], color=colors[i])
+        # plt.show()
+        c += 1
+    plt.show()
+
+
+    # print('wasserstein embedding...')
+    # nframe = len(frames)
+    # dissim_matrix = np.zeros((nframe, nframe))
+    # for i in range(len(all_bars) - 1):
+    #     for j in range(i + 1, len(all_bars)):
+    #         distance_wasserstein_0d = wasserstein(all_bars[i], all_bars[j])
+    #         dissim_matrix[i, j] = distance_wasserstein_0d
+    #         print('i,j', i, j)
+    # sym_dissim_mat = dissim_matrix + dissim_matrix.T
+    # embedding = TSNE(n_components=2, metric='precomputed')
+    # embedded_coords = embedding.fit_transform(sym_dissim_mat)
+
     return updated_frames
 
 
@@ -247,7 +335,11 @@ def risk_heatmap(filename, res=10):
     plt.show()
 
 
-risk_heatmap('out/risk-BI_CORR_400_A_1.csv')
+def wasserstein():
+    pass
+
+# risk_heatmap('out/risk-BI_CORR_400_A_1.csv')
+main('data/Pedestrian Dynamics Data Archive/bottleneck/150_q_56_h0.csv')
 
 # if __name__ == '__main__':
 #     if len(sys.argv) < 2:
@@ -255,5 +347,5 @@ risk_heatmap('out/risk-BI_CORR_400_A_1.csv')
 #     filename = sys.argv[1]
 #     if not os.path.exists(filename):
 #         quit("Filename '{}' does not exist".format(filename))
-#     # main(filename)
-#     plot_risk(filename, ids=[1967, 1934, 1871])  # todo provide ids as command line args
+#     main(filename)
+#     # plot_risk(filename, ids=[1967, 1934, 1871])  # todo provide ids as command line args
