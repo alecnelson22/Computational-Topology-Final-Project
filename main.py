@@ -7,17 +7,22 @@ import numpy as np
 import math
 from gtda.time_series import TakensEmbedding
 
+OUT_FOLDER = './out/'
+if not os.path.exists(OUT_FOLDER):
+    os.mkdir(OUT_FOLDER)
 
 def main(filename):
     # Load file and build data structure
-    data = build_data_structures(filename)
-    trajectories, frames, col_keys = data
+    # data = build_data_structures(filename)
+    # trajectories, frames, col_keys = data
 
     # do analysis with data structure
     # print_basic_stats(data)
     # plot_trajectories(data, True)
 
     ids = frames['id'].unique()
+
+    # build_training_data(filename)
 
     data_with_risk_scores = calculate_risk_scores(data)
     out_folder = './out/'
@@ -48,6 +53,36 @@ def plot_trajectories(data, include_center_of_mass):
         center_of_mass_list.plot(ax = ax, x = x_key, y = y_key, linewidth=3, color='black',legend = False)
     plt.show()
     return
+
+def build_training_data(dataset_list_filename, force_all = False):
+    df = pd.read_csv(dataset_list_filename)
+    total = len(df)
+    for index, row in df.iterrows():
+        filename = row['filename']
+        to_print = '|---- [{} / {}] {} '.format(index+1, total, filename)
+        padding = 99 - len(to_print)
+        to_print += padding*'-' + '|'
+        print(to_print)
+        if force_all or row.isnull().values.any():
+            avg, median = get_agg_risk_scores(filename)
+            df.loc[index, ['avg-risk-score', 'median-risk-score']] = [avg, median]
+            df.to_csv(dataset_list_filename, index=False)
+    return
+
+def get_agg_risk_scores(filename, save_all = True):
+    data = build_data_structures(filename)
+
+    data_with_risk_scores = calculate_risk_scores(data)
+    if save_all:
+        input_filename = os.path.basename(filename)
+        data_with_risk_scores.to_csv(OUT_FOLDER + 'risk-' + input_filename, index=False)
+
+    # print(data_with_risk_scores)
+    traj_risk_scores = data_with_risk_scores[['id', 'total-risk']].groupby('id').agg('mean')
+    # print(traj_risk_scores)
+    avg_risk = traj_risk_scores['total-risk'].mean()
+    median_risk = traj_risk_scores['total-risk'].median()
+    return avg_risk, median_risk
 
 
 # Creates 2-d scatter plot from x,y coordinates
@@ -110,6 +145,8 @@ def calculate_risk_scores(data):
             i,j = indices
             id1 = frame.iloc[i][id_key]
             id2 = frame.iloc[j][id_key]
+            if id1 == id2:
+                continue
             key = get_dual_key(id1, id2)
             this_exposure = exposure_function(distance, type='weighted') * delta_t
             exposure_matrix[key] += this_exposure
