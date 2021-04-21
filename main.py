@@ -7,17 +7,19 @@ import numpy as np
 import math
 from gtda.time_series import TakensEmbedding
 
+DEFAULT_DATASET = 'data/UNI_CORR_500/traj_UNI_CORR_500_06.csv'
 OUT_FOLDER = './out/'
 if not os.path.exists(OUT_FOLDER):
     os.mkdir(OUT_FOLDER)
 
 def main(filename):
     # Load file and build data structure
-    # data = build_data_structures(filename)
-    # trajectories, frames, col_keys = data
+    data = build_data_structures(filename)
+    trajectories, frames, col_keys = data
 
     # do analysis with data structure
-    # print_basic_stats(data)
+    print_basic_stats(data)
+    return
     # plot_trajectories(data, True)
 
     ids = frames['id'].unique()
@@ -376,13 +378,16 @@ def wasserstein():
     pass
 
 # risk_heatmap('out/risk-BI_CORR_400_A_1.csv')
-main('data/Pedestrian Dynamics Data Archive/bottleneck/150_q_56_h0.csv')
+# main('data/Pedestrian Dynamics Data Archive/bottleneck/150_q_56_h0.csv')
+# main('data/UNI_CORR_500/traj_UNI_CORR_500_06.csv')
 
-# if __name__ == '__main__':
-#     if len(sys.argv) < 2:
-#         quit("Missing filename as command-line argument. e.g. 'python main.py ./data/Simple/two_ortho.csv'")
-#     filename = sys.argv[1]
-#     if not os.path.exists(filename):
-#         quit("Filename '{}' does not exist".format(filename))
-#     main(filename)
-#     # plot_risk(filename, ids=[1967, 1934, 1871])  # todo provide ids as command line args
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        main(DEFAULT_DATASET)
+        return
+        # quit("Missing filename as command-line argument. e.g. 'python main.py ./data/Simple/two_ortho.csv'")
+    filename = sys.argv[1]
+    if not os.path.exists(filename):
+        quit("Filename '{}' does not exist".format(filename))
+    main(filename)
+    # plot_risk(filename, ids=[1967, 1934, 1871])  # todo provide ids as command line args
