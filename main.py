@@ -7,7 +7,7 @@ import numpy as np
 import math
 from gtda.time_series import TakensEmbedding
 
-DEFAULT_DATASET = 'data/UNI_CORR_500/traj_UNI_CORR_500_06.csv'
+DEFAULT_DATASET = 'data/UNI_CORR_500/traj_UNI_CORR_500_09.csv'
 OUT_FOLDER = './out/'
 if not os.path.exists(OUT_FOLDER):
     os.mkdir(OUT_FOLDER)
@@ -23,7 +23,7 @@ def main(filename):
 
     # do analysis with data structure
     print_basic_stats(data)
-    return
+
     # plot_trajectories(data, True)
 
     ids = frames['id'].unique()
@@ -31,9 +31,9 @@ def main(filename):
     # build_training_data(filename)
 
     input_filename = os.path.basename(filename).split('.')[0]
-    embedded_pts = calculate_risk_scores(data)
-    np.savez_compressed(input_filename + '_savez_compressed', embedded_pts)
-    np.save(input_filename + '_save', embedded_pts)
+    embedded_pts = create_takens_embedding(data)
+    # np.savez_compressed(input_filename + '_savez_compressed', embedded_pts)
+    # np.save(input_filename + '_save', embedded_pts)
 
     # out_folder = './out/'
     # if not os.path.exists(out_folder):
@@ -106,37 +106,13 @@ def scatterplot(coords, title):
     plt.show()
 
 
-def calculate_risk_scores(data):
-    trajectories, frames, col_keys = data
-    traj_ids = trajectories.groups.keys()
-    # exposure_matrix = init_exposure_matrix(traj_ids)
+def create_takens_embedding(data):
+    _trajectories, frames, col_keys = data
     (t_key, x_key, y_key, id_key) = col_keys
 
     max_t = frames[t_key].mean().max()
     min_t = frames[t_key].mean().min()
     delta_t = (max_t - min_t) / (len(frames) - 1)
-
-    updated_frames = pd.DataFrame()
-    total_risk_map = dict()
-
-    # # Get all unique individual ids
-    # all_ids = []
-    # for _time, frame in frames:
-    #     unique = frame['id'].unique()
-    #     for id in unique:
-    #         if id not in all_ids:
-    #             all_ids.append(id)
-    #
-    # pairwise_idxs = {}  # maps a "person pair key" to an index in the distances array
-    # c = 0
-    # for i in range(len(all_ids) - 1):
-    #     for j in range(i + 1, len(all_ids)):
-    #         p1 = all_ids[i]
-    #         p2 = all_ids[j]
-    #         key = get_dual_key(p1,p2)
-    #         pairwise_idxs[key] = c
-    #         c += 1
-
 
     distances = []
     pairwise_idxs = {}
@@ -161,8 +137,6 @@ def calculate_risk_scores(data):
             if id1 == id2:
                 continue
             key = get_dual_key(id1, id2)
-            # this_exposure = exposure_function(distance, type='weighted') * delta_t
-            # exposure_matrix[key] += this_exposure
 
             if key in pairwise_idxs:
                 idx = pairwise_idxs[key]
@@ -183,30 +157,10 @@ def calculate_risk_scores(data):
     print('distances.shape', distances.shape)
     print('new_distances.shape', new_distances.shape)
 
-    #     risk_so_far_map = dict()
-    #     for index, point in frame.iterrows():
-    #         id1 = point[id_key]
-    #         risk_so_far_inverse = 1
-    #         for id2 in traj_ids:
-    #             if id1 == id2:
-    #                 continue
-    #             else:
-    #                 key = get_dual_key(id1, id2)
-    #                 exposure = exposure_matrix[key]
-    #                 risk_so_far_inverse *= 1 - risk_function(exposure)
-    #         risk_so_far = 1 - risk_so_far_inverse
-    #         risk_so_far_map[id1] = risk_so_far
-    #         total_risk_map[id1] = risk_so_far
-    #
-    #     frame['risk-so-far'] = frame[id_key].map(risk_so_far_map)
-    #     updated_frames = updated_frames.append(frame)
-    #
-    # updated_frames['total-risk'] = updated_frames[id_key].map(total_risk_map)
-
     print('distances shape', np.array(distances).shape)
 
     # distances= np.load('distances_test_1.npz')['arr_0']
-    np.savez_compressed('distances_test', distances)
+    # np.savez_compressed('distances_test', distances)
 
     print('Computing Takens Embedding...')
     TE = TakensEmbedding(time_delay=10, dimension=2, flatten=True, stride=3)
@@ -234,8 +188,58 @@ def calculate_risk_scores(data):
         # c += 1
     plt.show()
 
-    # return updated_frames
     return embedded_points
+
+def calculate_risk_scores(data):
+    trajectories, frames, col_keys = data
+    traj_ids = trajectories.groups.keys()
+    exposure_matrix = init_exposure_matrix(traj_ids)
+    (t_key, x_key, y_key, id_key) = col_keys
+
+    max_t = frames[t_key].mean().max()
+    min_t = frames[t_key].mean().min()
+    delta_t = (max_t - min_t) / (len(frames) - 1)
+
+    updated_frames = pd.DataFrame()
+    total_risk_map = dict()
+    frame_num = 0
+    for _time, frame in frames:
+        frame_num += 1
+        print('Frame: {} / {}'.format(frame_num, len(frames)), end='\r')
+        points = frame[[x_key, y_key]].to_numpy()
+        rips = gudhi.RipsComplex(points, max_edge_length=2)
+        simplex_tree = rips.create_simplex_tree(max_dimension=1)
+        for indices, distance in simplex_tree.get_filtration():
+            if len(indices) != 2:
+                continue
+            i,j = indices
+            id1 = frame.iloc[i][id_key]
+            id2 = frame.iloc[j][id_key]
+            if id1 == id2:
+                continue
+            key = get_dual_key(id1, id2)
+            this_exposure = exposure_function(distance, type='weighted') * delta_t
+            exposure_matrix[key] += this_exposure
+        risk_so_far_map = dict()
+        for index, point in frame.iterrows():
+            id1 = point[id_key]
+            risk_so_far_inverse = 1
+            for id2 in traj_ids:
+                if id1 == id2:
+                    continue
+                else:
+                    key = get_dual_key(id1, id2)
+                    exposure = exposure_matrix[key]
+                    risk_so_far_inverse *= 1 - risk_function(exposure)
+            risk_so_far = 1 - risk_so_far_inverse
+            risk_so_far_map[id1] = risk_so_far
+            total_risk_map[id1] = risk_so_far
+
+        frame['risk-so-far'] = frame[id_key].map(risk_so_far_map)
+        updated_frames = updated_frames.append(frame)
+
+    updated_frames['total-risk'] = updated_frames[id_key].map(total_risk_map)
+    return updated_frames
 
 
 def risk_function(exposure):
