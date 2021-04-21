@@ -140,11 +140,11 @@ def create_takens_embedding(data):
 
             if key in pairwise_idxs:
                 idx = pairwise_idxs[key]
-                distances[idx][frame_num] = distance
+                distances[idx][frame_num - 1] = distance
             else:
                 pairwise_idxs[key] = c
                 distances.append(np.zeros(lf))
-                distances[c][frame_num] = distance
+                distances[c][frame_num - 1] = distance
                 c += 1
 
 
