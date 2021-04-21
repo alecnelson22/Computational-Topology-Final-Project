@@ -13,6 +13,10 @@ if not os.path.exists(OUT_FOLDER):
     os.mkdir(OUT_FOLDER)
 
 def main(filename):
+
+    # generate_takens('data/dataset_list.csv')
+
+    print('building data structures')
     # Load file and build data structure
     data = build_data_structures(filename)
     trajectories, frames, col_keys = data
@@ -26,13 +30,17 @@ def main(filename):
 
     # build_training_data(filename)
 
-    data_with_risk_scores = calculate_risk_scores(data)
-    out_folder = './out/'
-    if not os.path.exists(out_folder):
-        os.mkdir(out_folder)
-    input_filename = os.path.basename(filename)
-    data_with_risk_scores.to_csv(out_folder + 'risk-' + input_filename, index=False)
-    return
+    input_filename = os.path.basename(filename).split('.')[0]
+    embedded_pts = calculate_risk_scores(data)
+    np.savez_compressed(input_filename + '_savez_compressed', embedded_pts)
+    np.save(input_filename + '_save', embedded_pts)
+
+    # out_folder = './out/'
+    # if not os.path.exists(out_folder):
+    #     os.mkdir(out_folder)
+    # input_filename = os.path.basename(filename)
+    # data_with_risk_scores.to_csv(out_folder + 'risk-' + input_filename, index=False)
+    # return
 
 
 def print_basic_stats(data):
@@ -101,7 +109,7 @@ def scatterplot(coords, title):
 def calculate_risk_scores(data):
     trajectories, frames, col_keys = data
     traj_ids = trajectories.groups.keys()
-    exposure_matrix = init_exposure_matrix(traj_ids)
+    # exposure_matrix = init_exposure_matrix(traj_ids)
     (t_key, x_key, y_key, id_key) = col_keys
 
     max_t = frames[t_key].mean().max()
@@ -110,30 +118,33 @@ def calculate_risk_scores(data):
 
     updated_frames = pd.DataFrame()
     total_risk_map = dict()
+
+    # # Get all unique individual ids
+    # all_ids = []
+    # for _time, frame in frames:
+    #     unique = frame['id'].unique()
+    #     for id in unique:
+    #         if id not in all_ids:
+    #             all_ids.append(id)
+    #
+    # pairwise_idxs = {}  # maps a "person pair key" to an index in the distances array
+    # c = 0
+    # for i in range(len(all_ids) - 1):
+    #     for j in range(i + 1, len(all_ids)):
+    #         p1 = all_ids[i]
+    #         p2 = all_ids[j]
+    #         key = get_dual_key(p1,p2)
+    #         pairwise_idxs[key] = c
+    #         c += 1
+
+
+    distances = []
+    pairwise_idxs = {}
+
     frame_num = 0
-
-    # Get all unique individual ids
-    all_ids = []
-    for _time, frame in frames:
-        unique = frame['id'].unique()
-        for id in unique:
-            if id not in all_ids:
-                all_ids.append(id)
-
-    pairwise_idxs = {}  # maps a "person pair key" to an index in the distances array
+    lf = len(frames)
     c = 0
-    for i in range(len(all_ids) - 1):
-        for j in range(i + 1, len(all_ids)):
-            p1 = all_ids[i]
-            p2 = all_ids[j]
-            key = get_dual_key(p1,p2)
-            pairwise_idxs[key] = c
-            c += 1
-
-    # Initialize "distance between all individuals" array for every time step
-    # distances = [np.zeros(len(pairwise_idxs.keys())) for frame in frames]
-    distances = [[0 for f in frames] for i in range(len(pairwise_idxs.keys()))]
-
+    print('Rips/Takens...')
     for _time, frame in frames:
         frame_num += 1
         print('Frame: {} / {}'.format(frame_num, len(frames)), end='\r')
@@ -150,12 +161,27 @@ def calculate_risk_scores(data):
             if id1 == id2:
                 continue
             key = get_dual_key(id1, id2)
-            this_exposure = exposure_function(distance, type='weighted') * delta_t
-            exposure_matrix[key] += this_exposure
+            # this_exposure = exposure_function(distance, type='weighted') * delta_t
+            # exposure_matrix[key] += this_exposure
 
-            idx = pairwise_idxs[key]
-            # distances[frame_num][idx] = distance
-            distances[idx][frame_num] = distance
+            if key in pairwise_idxs:
+                idx = pairwise_idxs[key]
+                distances[idx][frame_num] = distance
+            else:
+                pairwise_idxs[key] = c
+                distances.append(np.zeros(lf))
+                distances[c][frame_num] = distance
+                c += 1
+
+
+    new_distances = []
+    for pair in distances:
+        if np.count_nonzero(pair) > 2:
+            new_distances.append(pair)
+    distances = np.array(distances)
+    new_distances = np.array(new_distances)
+    print('distances.shape', distances.shape)
+    print('new_distances.shape', new_distances.shape)
 
     #     risk_so_far_map = dict()
     #     for index, point in frame.iterrows():
@@ -177,14 +203,15 @@ def calculate_risk_scores(data):
     #
     # updated_frames['total-risk'] = updated_frames[id_key].map(total_risk_map)
 
+    print('distances shape', np.array(distances).shape)
+
+    # distances= np.load('distances_test_1.npz')['arr_0']
+    np.savez_compressed('distances_test', distances)
 
     print('Computing Takens Embedding...')
-    TE = TakensEmbedding(time_delay=2, dimension=2, flatten=True)
+    TE = TakensEmbedding(time_delay=10, dimension=2, flatten=True, stride=3)
     embedded_points = np.array(TE.fit_transform(distances))
     print('embedded points shape', embedded_points.shape)
-    # plt.scatter(embedded_points[:,0], embedded_points[:,1])
-    # plt.show()
-    fig = TE.plot(embedded_points)
 
     # Plotting colors to represent different classes of images
     colors = ['black',
@@ -198,29 +225,17 @@ def calculate_risk_scores(data):
 
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
-    toplot = [5, 205, 405, 605, 805, 1005, 1205, 1405]
-    c = 0
-    for i in toplot:
-        ax1.scatter(embedded_points[i, :, 0], embedded_points[i, :, 1], color=colors[c])
-        # plt.plot(embedded_points[i, :, 0], embedded_points[i, :, 1], color=colors[i])
-        # plt.show()
-        c += 1
+    # toplot = [5, 105, 205, 305, 405, 505, 605, 705]
+    # c = 0
+    # for i in toplot:
+    for i in range(500):
+        #ax1.scatter(embedded_points[i, :, 0], embedded_points[i, :, 1], color=colors[c])
+        ax1.scatter(embedded_points[i, :, 0], embedded_points[i, :, 1])
+        # c += 1
     plt.show()
 
-
-    # print('wasserstein embedding...')
-    # nframe = len(frames)
-    # dissim_matrix = np.zeros((nframe, nframe))
-    # for i in range(len(all_bars) - 1):
-    #     for j in range(i + 1, len(all_bars)):
-    #         distance_wasserstein_0d = wasserstein(all_bars[i], all_bars[j])
-    #         dissim_matrix[i, j] = distance_wasserstein_0d
-    #         print('i,j', i, j)
-    # sym_dissim_mat = dissim_matrix + dissim_matrix.T
-    # embedding = TSNE(n_components=2, metric='precomputed')
-    # embedded_coords = embedding.fit_transform(sym_dissim_mat)
-
-    return updated_frames
+    # return updated_frames
+    return embedded_points
 
 
 def risk_function(exposure):
@@ -262,6 +277,12 @@ def get_dual_key(id1, id2):
     key = '-'.join([str(x) for x in keyList])
     return key
 
+
+def generate_takens(filename):
+    df = pd.read_csv(filename)
+    for f in df['filename']:
+        print('Processing ', f, '...')
+        main(f)
 
 def build_data_structures(filename, verbose = False):
     '''
@@ -374,9 +395,6 @@ def risk_heatmap(filename, res=10):
     plt.show()
 
 
-def wasserstein():
-    pass
-
 # risk_heatmap('out/risk-BI_CORR_400_A_1.csv')
 # main('data/Pedestrian Dynamics Data Archive/bottleneck/150_q_56_h0.csv')
 # main('data/UNI_CORR_500/traj_UNI_CORR_500_06.csv')
@@ -384,7 +402,7 @@ def wasserstein():
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         main(DEFAULT_DATASET)
-        return
+        exit(0)
         # quit("Missing filename as command-line argument. e.g. 'python main.py ./data/Simple/two_ortho.csv'")
     filename = sys.argv[1]
     if not os.path.exists(filename):
