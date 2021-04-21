@@ -32,8 +32,9 @@ def main(filename):
 
     input_filename = os.path.basename(filename).split('.')[0]
     embedded_pts = create_takens_embedding(data)
-    # np.savez_compressed(input_filename + '_savez_compressed', embedded_pts)
+    # np.savez_compressed(OUT_FOLDER + input_filename + '_savez_compressed', embedded_pts)
     # np.save(input_filename + '_save', embedded_pts)
+    save_takens_embedding(embedded_pts, input_filename)
 
     # out_folder = './out/'
     # if not os.path.exists(out_folder):
@@ -41,7 +42,6 @@ def main(filename):
     # input_filename = os.path.basename(filename)
     # data_with_risk_scores.to_csv(out_folder + 'risk-' + input_filename, index=False)
     # return
-
 
 def print_basic_stats(data):
     trajectories, frames, col_keys = data
@@ -125,7 +125,7 @@ def create_takens_embedding(data):
         frame_num += 1
         print('Frame: {} / {}'.format(frame_num, len(frames)), end='\r')
         points = frame[[x_key, y_key]].to_numpy()
-        rips = gudhi.RipsComplex(points, max_edge_length=2)
+        rips = gudhi.RipsComplex(points, max_edge_length=0.6)
         simplex_tree = rips.create_simplex_tree(max_dimension=1)
 
         for indices, distance in simplex_tree.get_filtration():
@@ -162,8 +162,10 @@ def create_takens_embedding(data):
     # distances= np.load('distances_test_1.npz')['arr_0']
     # np.savez_compressed('distances_test', distances)
 
+
+
     print('Computing Takens Embedding...')
-    TE = TakensEmbedding(time_delay=10, dimension=2, flatten=True, stride=3)
+    TE = TakensEmbedding(time_delay=10, dimension=2, flatten=True, stride=20)
     embedded_points = np.array(TE.fit_transform(distances))
     print('embedded points shape', embedded_points.shape)
 
@@ -189,6 +191,16 @@ def create_takens_embedding(data):
     plt.show()
 
     return embedded_points
+
+def save_takens_embedding(data_array, input_filename, reshape=True, remove_zeroes=True):
+    if reshape:
+        data_array = data_array.reshape(-1, 2)
+    if remove_zeroes:
+        mask = ~np.all(data_array == 0, axis=1)
+        data_array = data_array[mask]
+
+    np.savez_compressed(OUT_FOLDER + input_filename + '_savez_compressed', data_array)
+    np.save(OUT_FOLDER + input_filename + '_save', data_array)
 
 def calculate_risk_scores(data):
     trajectories, frames, col_keys = data
