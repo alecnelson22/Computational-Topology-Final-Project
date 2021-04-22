@@ -1,4 +1,5 @@
 .DS_Store
 .venv
 /out/*
-/temp/*
+/takens_point_cloud/*
+/takens_barcode/*
