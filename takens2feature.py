@@ -5,7 +5,10 @@ import numpy as np
 from ripser import ripser
 from persim import plot_diagrams
 import matplotlib.pyplot as plt
+import gudhi.representations.vector_methods
+# .PersistenceImage
 
+from sklearn.model_selection import train_test_split
 
 outFolder = './out/'
 
@@ -25,14 +28,21 @@ print(data_array.shape)
 
 np.savetxt("./out/big_dumb_list.csv", data_array, delimiter=' ')
 
-print('running ripser...')
-rippedData = ripser(data_array)
-dgms = rippedData['dgms']
+# print('running ripser...')
+# rippedData = ripser(data_array)
+# dgms = rippedData['dgms']
 
-plot_diagrams(dgms, ax=plt.plot())
-plt.show()
-# plt.savefig(outFolder + 'plot-barcode-' + outFilename + '.png', pad_inches=0)
-plt.cla()
+# plot_diagrams(dgms, ax=plt.plot())
+# plt.show()
+# # plt.savefig(outFolder + 'plot-barcode-' + outFilename + '.png', pad_inches=0)
+# plt.cla()
+
+
+XTrain, XTest, yTrain, yTest = train_test_split(X, y, test_size=0.2, stratify = y)
+vectorizor = gudhi.representations.vector_methods.PersistenceImage
+toVector = vectorizor().fit(XTrain)
+XImgTrain = toVector.transform(XTrain)
+XImgTest = toVector.transform(XTest)
 
 
 # dataset_list_filename = './data/dataset_list.csv'
