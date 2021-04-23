@@ -32,8 +32,9 @@ for index, row  in df.iterrows():
             y_avg.append(avg_risk)
             y_med.append(med_risk)
 
-vectorizor = gudhi.representations.vector_methods.PersistenceImage
-vectorizor = vectorizor(resolution = [10, 10])
 
-X = vectorizor.fit_transform(list_of_barcode_lists)
+max_value = ((0.6**2) + (0.6**2))** 0.5 # the 0.6 is related to our max threshold. The max distance, is then the diagonal across this 0.6x0.6
+vectorizor = gudhi.representations.vector_methods.PersistenceImage
+vectorizor = vectorizor(resolution = [10, 10], im_range=[0,max_value,0,max_value])
+X = vectorizor.transform(list_of_barcode_lists)
 np.savez(outFolder + outputFilename, X = np.array(X), y_avg = np.array(y_avg), y_med = np.array(y_med))
