@@ -13,8 +13,8 @@ if not os.path.exists(OUT_FOLDER):
     os.mkdir(OUT_FOLDER)
 
 def main(filename):
-
-    build_training_data('./data/dataset_list.csv')
+    build_all_space_time_point_clouds('./data/dataset_list.csv')
+    # build_training_data('./data/dataset_list.csv')
     # generate_takens('data/dataset_list.csv')
 
     # print('building data structures')
@@ -78,6 +78,34 @@ def build_training_data(dataset_list_filename, force_all = False):
             avg, median = get_agg_risk_scores(filename)
             df.loc[index, ['avg-risk-score', 'median-risk-score']] = [avg, median]
             df.to_csv(dataset_list_filename, index=False)
+    return
+
+def build_all_space_time_point_clouds(dataset_list_filename):
+    df = pd.read_csv(dataset_list_filename)
+    total = len(df)
+    for index, row in df.iterrows():
+        filename = row['filename']
+        to_print = '|---- [{} / {}] {} '.format(index+1, total, filename)
+        padding = 99 - len(to_print)
+        to_print += padding*'-' + '|'
+        print(to_print)
+        trajectory_to_point_cloud_3D(filename)
+    return
+
+def trajectory_to_point_cloud_3D(filename, stride=10):
+    data = build_data_structures(filename)
+    _trajectories, frames, col_keys = data
+
+    (t_key, x_key, y_key, id_key) = col_keys
+
+    times = list(frames.groups)
+    sampled_times = times[::stride]
+    groups = [frames.get_group(t) for t in sampled_times]
+    sampled_frames = pd.concat(groups)
+    sampled_frames = sampled_frames[[t_key, x_key, y_key]]
+    outFolder = './space_time_point_cloud/'
+
+    sampled_frames.to_csv(outFolder +  os.path.basename(filename), index=False, header=False)
     return
 
 def get_agg_risk_scores(filename, save_all = True):
