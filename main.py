@@ -219,7 +219,7 @@ def calculate_risk_scores(data):
         frame_num += 1
         print('Frame: {} / {}'.format(frame_num, len(frames)), end='\r')
         points = frame[[x_key, y_key]].to_numpy()
-        rips = gudhi.RipsComplex(points, max_edge_length=2)
+        rips = gudhi.RipsComplex(points, max_edge_length=0.6)
         simplex_tree = rips.create_simplex_tree(max_dimension=1)
         for indices, distance in simplex_tree.get_filtration():
             if len(indices) != 2:
@@ -256,7 +256,7 @@ def calculate_risk_scores(data):
 
 def risk_function(exposure):
     # todo move parameter r and k to command line arg (with good defaults)
-    r = 1 # how quickly you will get infected if you are exposed to someone with covid
+    r = 0.1 # how quickly you will get infected if you are exposed to someone with covid
     k = 0.1 # chance a person has covid
     return k * (1 - (1 / (r * exposure + 1)))
 
@@ -264,7 +264,7 @@ def risk_function(exposure):
 def exposure_function(distance, type='binary'):
     # todo add different function types
     # todo move function type, and function params to command-line args (with good defaults)
-    threshold = 2
+    threshold = 0.6
     if distance >= threshold:
         return 0
     else:
