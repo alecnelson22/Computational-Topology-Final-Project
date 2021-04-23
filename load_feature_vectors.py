@@ -1,11 +1,8 @@
 import os
 import numpy as np
 
-inFolder = './persistence_image_feature/'
-outFolder = './persistence_image_feature/'
-
+inFolder = './space_time_feature/'
 inFilename = 'full_dataset.npz' 
-
 
 full_dataset = np.load(inFolder + inFilename)
 
