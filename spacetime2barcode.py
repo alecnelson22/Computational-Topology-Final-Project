@@ -1,3 +1,5 @@
+import math
+import time
 import os
 import subprocess
 import pandas as pd
@@ -18,9 +20,16 @@ for filename in df['filename']:
         if os.path.exists(outputFilename):
             print('Already done. Skipping.')
             continue
+        size_kb = int(os.path.getsize(inFolder + basename) / 1024)
+        print('Size:', '{} KB'.format(size_kb))
+        start = time.time()
         command_list = ['./ripser', '--format', 'point-cloud', '--dim', '0', inFolder + basename]
         command_string = ' '.join(command_list)
         # print(command_string)
         output = subprocess.check_output(command_list)
         with open(outputFilename, 'wb') as f:
             f.write(output)
+        elapsed_time = time.time() - start
+        minutes = math.floor(elapsed_time / 60)
+        seconds = math.round(elapsed_time - minutes*60)
+        print('Time: ', '{}m {}s'.format(minutes, seconds))
