@@ -17,7 +17,8 @@ for filename in df['filename']:
         outputFilename = outFolder + takens_embedding_filename.replace('_takens_point_cloud.txt', '_takens_barcode.txt')
         if os.path.exists(outputFilename):
             print('Already done. Skipping.')
-        command_list = ['./ripser', '--format', 'point-cloud', inFolder + takens_embedding_filename]
+            continue
+        command_list = ['./ripser', '--format', 'point-cloud', '--dim', '0', inFolder + takens_embedding_filename]
         command_string = ' '.join(command_list)
         # print(command_string)
         output = subprocess.check_output(command_list)
