@@ -2,4 +2,3 @@
 .venv
 /out/*
 /takens_point_cloud/*
-/takens_barcode/*

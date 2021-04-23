@@ -26,7 +26,7 @@ for filename in df['filename']:
     barcode_filename = basename.replace('.csv', '_takens_barcode.txt')
     if os.path.exists(inFolder + barcode_filename):
         print(barcode_filename, '...')
-        outputFilename = outFolder + barcode_filename.replace('_takens_barcode.txt', '_persistance_image_feature.npz')
+        outputFilename = outFolder + barcode_filename.replace('_takens_barcode.txt', '_persistance_image_feature.txt')
         if os.path.exists(outputFilename):
             print('Already done. Skipping.')
         with open(inFolder + barcode_filename, 'r') as f:
