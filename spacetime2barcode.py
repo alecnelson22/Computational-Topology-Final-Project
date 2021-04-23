@@ -31,5 +31,5 @@ for filename in df['filename']:
             f.write(output)
         elapsed_time = time.time() - start
         minutes = math.floor(elapsed_time / 60)
-        seconds = math.round(elapsed_time - minutes*60)
+        seconds = round(elapsed_time - minutes*60)
         print('Time: ', '{}m {}s'.format(minutes, seconds))
