@@ -2,3 +2,4 @@
 .venv
 /out/*
 /takens_point_cloud/*
+/space_time_point_cloud/*
