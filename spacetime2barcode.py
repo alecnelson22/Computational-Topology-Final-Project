@@ -23,7 +23,7 @@ for filename in df['filename']:
         size_kb = int(os.path.getsize(inFolder + basename) / 1024)
         print('Size:', '{} KB'.format(size_kb))
         start = time.time()
-        command_list = ['./ripser', '--format', 'point-cloud', '--dim', '0', inFolder + basename]
+        command_list = ['./ripser', '--format', 'point-cloud', '--dim', '0', '--threshold', '0.6', inFolder + basename]
         command_string = ' '.join(command_list)
         # print(command_string)
         output = subprocess.check_output(command_list)
