@@ -6,6 +6,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import SGDRegressor
 from sklearn.svm import SVR
 
+from sklearn.model_selection import train_test_split
+
 
 def load_full_dataset(fname):
     full_dataset = np.load(fname)
@@ -34,17 +36,12 @@ def main(fname):
     n_train = int(len(X) * train_percent)
     n_test = len(X) - n_train
 
+    split_data = train_test_split(X, y_avg, y_med, train_size = train_percent)
+    train_feats, test_feats, train_y_avg, test_y_avg, train_y_med, test_y_med = split_data
+
     for m in models:
         model_name = m[0]
         model = m[1]
-
-        train_feats = X[:n_train]
-        train_y_avg = y_avg[:n_train]
-        train_y_med = y_med[:n_train]
-
-        test_feats = X[n_train:]
-        test_y_avg = y_avg[n_train:]
-        test_y_med = y_med[n_train:]
 
         # fit to y_avg
         model.fit(train_feats, train_y_avg)
@@ -68,4 +65,3 @@ if __name__ == '__main__':
     if not os.path.exists(filename):
         quit("Filename '{}' does not exist".format(filename))
     main(filename)
-    # plot_risk(filename, ids=[1967, 1934, 1871])  # todo provide ids as command line args
