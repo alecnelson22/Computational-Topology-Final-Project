@@ -29,6 +29,7 @@ for filename in df['filename']:
         outputFilename = outFolder + barcode_filename.replace('_takens_barcode.txt', '_persistance_image_feature.txt')
         if os.path.exists(outputFilename):
             print('Already done. Skipping.')
+            continue
         with open(inFolder + barcode_filename, 'r') as f:
             file_lines = f.readlines()
             idx_0 = file_lines.index('persistence intervals in dim 0:\n')
