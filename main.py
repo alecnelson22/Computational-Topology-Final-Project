@@ -14,34 +14,35 @@ if not os.path.exists(OUT_FOLDER):
 
 def main(filename):
 
+    build_training_data('./data/dataset_list.csv')
     # generate_takens('data/dataset_list.csv')
 
-    print('building data structures')
+    # print('building data structures')
     # Load file and build data structure
-    data = build_data_structures(filename)
-    trajectories, frames, col_keys = data
+    # data = build_data_structures(filename)
+    # trajectories, frames, col_keys = data
 
     # do analysis with data structure
-    print_basic_stats(data)
+    # print_basic_stats(data)
 
     # plot_trajectories(data, True)
 
-    ids = frames['id'].unique()
+    # ids = frames['id'].unique()
 
     # build_training_data(filename)
 
-    input_filename = os.path.basename(filename).split('.')[0]
-    embedded_pts = create_takens_embedding(data)
+    # input_filename = os.path.basename(filename).split('.')[0]
+    # embedded_pts = create_takens_embedding(data)
     # np.savez_compressed(OUT_FOLDER + input_filename + '_savez_compressed', embedded_pts)
     # np.save(input_filename + '_save', embedded_pts)
-    save_takens_embedding(embedded_pts, input_filename)
+    # save_takens_embedding(embedded_pts, input_filename)
 
     # out_folder = './out/'
     # if not os.path.exists(out_folder):
     #     os.mkdir(out_folder)
     # input_filename = os.path.basename(filename)
     # data_with_risk_scores.to_csv(out_folder + 'risk-' + input_filename, index=False)
-    # return
+    return
 
 def print_basic_stats(data):
     trajectories, frames, col_keys = data
