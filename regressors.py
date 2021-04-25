@@ -7,7 +7,8 @@ from sklearn.linear_model import SGDRegressor
 from sklearn.svm import SVR
 
 from sklearn.model_selection import train_test_split
-
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import cross_val_predict
 
 def load_full_dataset(fname):
     full_dataset = np.load(fname)
@@ -17,13 +18,31 @@ def load_full_dataset(fname):
     return X, y_avg, y_med
 
 
-def print_stats(model_name, n_train, n_test, R2_y_avg, R2_y_med):
+def print_stats(model_name, n_train, n_test, R2_y_avg, cross_val_avg, R2_y_med, cross_val_med):
     print('MODEL: ', model_name)
-    print('Number of train: ', n_train)
-    print('Number of test: ', n_test)
-    print('R2 y_avg: ', R2_y_avg)
-    print('R2_y_med: ', R2_y_med, '\n')
+    # print('Number of train: ', n_train)
+    # print('Number of test: ', n_test)
+    # print('R2 y_avg: ', R2_y_avg)
+    print('y_avg:')
+    # print('Cross_Val List: ', cross_val_avg)
+    print('\tmean:', -np.mean(cross_val_avg))
+    print('\tstd:', np.std(cross_val_avg), '\n')
+    # print('R2_y_med: ', R2_y_med, '\n')
 
+    print('y_med:')
+    # print('Cross_Val List: ', cross_val_med, '\n')
+    print('\tmean:', -np.mean(cross_val_med))
+    print('\tstd:', np.std(cross_val_med), '\n')
+
+
+def save_scatterplot(predicted, y, model_name, y_mode):
+    fig, ax = plt.subplots()
+    ax.scatter(y, predicted, edgecolors=(0, 0, 0))
+    ax.plot([y.min(), y.max()], [y.min(), y.max()], 'k--', lw=4)
+    ax.set_xlabel('Measured')
+    ax.set_ylabel('Predicted')
+    plt.savefig('./predict_charts/' + '{}_{}.png'.format(model_name, y_mode))
+    return
 
 def main(fname):
     LR = ['Linear Regression', LinearRegression()]
@@ -52,7 +71,15 @@ def main(fname):
         preds_y_med = model.predict(test_feats)
         score_y_med = model.score(test_feats, test_y_med)
 
-        print_stats(model_name, n_train, n_test, score_y_avg, score_y_med)
+
+        splits = len(y_avg)
+        cross_val_scores_avg = cross_val_score(model, X, y_avg, cv=splits, scoring='neg_mean_squared_error')
+        cross_val_scores_med = cross_val_score(model, X, y_med, cv=splits, scoring='neg_mean_squared_error')
+        print_stats(model_name, n_train, n_test, score_y_avg, cross_val_scores_avg, score_y_med, cross_val_scores_med)
+
+        for y, y_name in [(y_avg, 'avg'), (y_med, 'med')]:
+            predicted = cross_val_predict(model, X, y, cv=splits)
+            save_scatterplot(predicted, y, model_name, y_name)
 
 
 if __name__ == '__main__':
