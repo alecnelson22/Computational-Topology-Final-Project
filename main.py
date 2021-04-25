@@ -13,7 +13,8 @@ if not os.path.exists(OUT_FOLDER):
     os.mkdir(OUT_FOLDER)
 
 def main(filename):
-    build_all_space_time_point_clouds('./data/dataset_list.csv')
+    build_trajectory_heatmaps('data/dataset_list.csv')
+    # build_all_space_time_point_clouds('./data/dataset_list.csv')
     # build_training_data('./data/dataset_list.csv')
     # generate_takens('data/dataset_list.csv')
 
@@ -52,6 +53,61 @@ def print_basic_stats(data):
     print('# trajectories: {}'.format(number_of_trajectories))
     print('# frames: {}'.format(number_of_frames))
     return
+
+
+def get_spatial_bounds(dataset_list_filename):
+    xmin = 10000
+    xmax = -10000
+    ymin = 10000
+    ymax = -10000
+    df = pd.read_csv(dataset_list_filename)
+    for index, row in df.iterrows():
+        filename = row['filename']
+        data = build_data_structures(filename)
+        _trajectories, frames, col_keys = data
+        xmin_i = frames['x'].min().min()
+        xmax_i = frames['x'].max().max()
+        ymin_i = frames['y'].min().min()
+        ymax_i = frames['y'].max().max()
+        if xmin_i < xmin:
+            xmin = xmin_i
+        if xmax_i > xmax:
+            xmax = xmax_i
+        if ymin_i < ymin:
+            ymin = ymin_i
+        if ymax_i > ymax:
+            ymax = ymax_i
+    return math.floor(xmin), math.ceil(xmax), math.floor(ymin), math.ceil(ymax)
+
+
+def build_trajectory_heatmaps(dataset_list_filename):
+    xmin, xmax, ymin, ymax = get_spatial_bounds(dataset_list_filename)
+    scale = 10
+    nx = (xmax - xmin) * scale
+    ny = (ymax - ymin) * scale
+
+    df = pd.read_csv(dataset_list_filename)
+    for index, row in df.iterrows():
+        filename = row['filename']
+        data = build_data_structures(filename)
+        _trajectories, frames, col_keys = data
+        heatmap = np.zeros((ny, nx))
+
+        for i, frame in frames:
+            x_i = frame['x']
+            y_i = frame['y']
+
+            for i, x in x_i.items():
+                x = int((x_i[i] - xmin) * scale)
+                y = int((y_i[i] - ymin) * scale)
+                heatmap[y,x] += 1
+        heatmap = heatmap.flatten()
+        base_fname = os.path.basename(filename).split('.')[0]
+        np.savez_compressed(os.path.join(OUT_FOLDER, base_fname + '_heatmap'), heatmap)
+        # plt.imshow(heatmap)
+        # plt.show()
+
+
 
 
 def plot_trajectories(data, include_center_of_mass):
