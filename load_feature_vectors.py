@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-inFolder = './space_time_feature/'
+inFolder = './simple_feature/'
 inFilename = 'full_dataset.npz' 
 
 full_dataset = np.load(inFolder + inFilename)

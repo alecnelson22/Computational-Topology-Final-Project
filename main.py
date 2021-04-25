@@ -13,7 +13,8 @@ if not os.path.exists(OUT_FOLDER):
     os.mkdir(OUT_FOLDER)
 
 def main(filename):
-    build_all_space_time_point_clouds('./data/dataset_list.csv')
+    # build_all_space_time_point_clouds('./data/dataset_list.csv')
+    build_all_simple_features('./data/dataset_list.csv')
     # build_training_data('./data/dataset_list.csv')
     # generate_takens('data/dataset_list.csv')
 
@@ -79,6 +80,39 @@ def build_training_data(dataset_list_filename, force_all = False):
             df.loc[index, ['avg-risk-score', 'median-risk-score']] = [avg, median]
             df.to_csv(dataset_list_filename, index=False)
     return
+
+def build_all_simple_features(dataset_list_filename):
+    df = pd.read_csv(dataset_list_filename)
+    total = len(df)
+    X = []
+    y_avg = []
+    y_med = []
+    for index, row in df.iterrows():
+        filename = row['filename']
+        avg_risk = row['avg-risk-score']
+        med_risk = row['median-risk-score']
+        to_print = '|---- [{} / {}] {} '.format(index+1, total, filename)
+        padding = 99 - len(to_print)
+        to_print += padding*'-' + '|'
+        print(to_print)
+        feature = trajectory_to_simple_feature(filename)
+        print(feature)
+        X.append(feature)
+        y_avg.append(avg_risk)
+        y_med.append(med_risk)
+    np.savez('./simple_feature/full_dataset.npz', X = np.array(X), y_avg = np.array(y_avg), y_med = np.array(y_med))
+    return
+
+def trajectory_to_simple_feature(filename):
+    data = build_data_structures(filename)
+    trajectories, frames, col_keys = data
+    (t_key, x_key, y_key, id_key) = col_keys
+    
+    num_frames = len(frames)
+    avg_trajectories = frames[id_key].count().mean()
+    num_trajectories = len(trajectories)
+
+    return np.array([num_frames, avg_trajectories, num_trajectories])
 
 def build_all_space_time_point_clouds(dataset_list_filename):
     df = pd.read_csv(dataset_list_filename)
